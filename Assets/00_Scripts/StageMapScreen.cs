@@ -9,13 +9,13 @@ public class StageMapScreen : UIScreen
     [SerializeField] private Button backButton;
     [SerializeField] private Text coinsText;
     [SerializeField] private Text gemsText;
-    [SerializeField] private string inGameSceneName = "InGame";
+    [SerializeField] private string mainMenuSceneName = "Main";
 
     private bool _builtOnce;
 
     private void Awake()
     {
-        backButton.onClick.AddListener(() => StageFlowManager.Instance.ShowLobby());
+        backButton.onClick.AddListener(() => SceneManager.LoadScene(mainMenuSceneName));
         stageButtonTemplate.gameObject.SetActive(false);
     }
 
@@ -77,13 +77,13 @@ public class StageMapScreen : UIScreen
                 }
             }
 
-            button.onClick.AddListener(() => EnterStage(stageIndex));
+            button.onClick.AddListener(() => SelectStage(stageIndex));
         }
     }
 
-    private void EnterStage(int stageIndex)
+    private void SelectStage(int stageIndex)
     {
         GameSession.SelectedStageIndex = stageIndex;
-        SceneManager.LoadScene(inGameSceneName);
+        StageFlowManager.Instance.ShowLobby();
     }
 }

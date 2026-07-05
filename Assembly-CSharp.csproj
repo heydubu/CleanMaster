@@ -70,6 +70,7 @@
     <Compile Include="Assets\00_Scripts\MiniGameScreen.cs" />
     <Compile Include="Assets\00_Scripts\GameManager.cs" />
     <Compile Include="Assets\00_Scripts\MainMenuController.cs" />
+    <Compile Include="Assets\00_Scripts\RouletteWheel.cs" />
     <Compile Include="Assets\00_Scripts\StageProgress.cs" />
     <Compile Include="Assets\00_Scripts\DirtScrapeMiniGame.cs" />
     <Compile Include="Assets\00_Scripts\StageMapScreen.cs" />

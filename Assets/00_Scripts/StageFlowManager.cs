@@ -16,7 +16,7 @@ public class StageFlowManager : MonoBehaviour
 
     private void Start()
     {
-        ShowLobby();
+        ShowStageMap();
     }
 
     public void ShowLobby() => SwitchTo(lobbyScreen);

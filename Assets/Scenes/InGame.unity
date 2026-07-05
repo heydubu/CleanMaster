@@ -993,8 +993,6 @@ GameObject:
   m_Component:
   - component: {fileID: 800002004}
   - component: {fileID: 800002001}
-  - component: {fileID: 800002002}
-  - component: {fileID: 800002003}
   m_Layer: 0
   m_Name: Managers
   m_TagString: Untagged
@@ -1028,13 +1026,45 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 75b04c00f21d4af89a7d43ed296fdd45, type: 3}
   m_Name:
   m_EditorClassIdentifier:
+--- !u!1 &800002010
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 800002011}
+  - component: {fileID: 800002002}
+  - component: {fileID: 800002003}
+  m_Layer: 0
+  m_Name: GameFlow
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &800002011
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 800002010}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &800002002
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 800002000}
+  m_GameObject: {fileID: 800002010}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 21a8d0287a0f48a1a10f8c227055adbe, type: 3}
@@ -1048,7 +1078,7 @@ MonoBehaviour:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 800002000}
+  m_GameObject: {fileID: 800002010}
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 8a852ab3bba344e3843676be7319371c, type: 3}
@@ -1509,3 +1539,4 @@ SceneRoots:
   - {fileID: 800000002}
   - {fileID: 800000021}
   - {fileID: 800002004}
+  - {fileID: 800002011}
