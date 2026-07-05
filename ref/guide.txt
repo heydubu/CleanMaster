@@ -1,0 +1,1602 @@
+현재 Unity 프로젝트를 분석해서 발톱 복원 ASMR 모바일 게임의 전체 아키텍처를 설계해줘.
+
+중요:
+- 먼저 현재 프로젝트의 Scene, Script, Prefab, Canvas, UI Hierarchy, 폴더 구조를 분석해.
+- 바로 코드를 작성하거나 파일을 수정하지 마.
+- 첫 응답에서는 분석 결과와 구현 계획만 보여줘.
+- 내가 승인하기 전까지 Script, Scene, Prefab, ScriptableObject Asset을 생성하거나 수정하지 마.
+- 설명, 계획, 질문은 한국어로 작성해.
+- 코드, 클래스명, 변수명, 파일명, 커밋 메시지는 영어로 작성해.
+- 코드 주석은 꼭 필요한 경우에만 영어로 작성해.
+- 기존 코드를 최대한 재사용하고, 기존 오브젝트를 근거 없이 삭제하거나 이름을 변경하지 마.
+- 불필요한 추상화, 인터페이스, DI 프레임워크, 이벤트 버스, 서비스 로케이터를 만들지 마.
+- MonoBehaviour 싱글톤을 남발하지 마.
+- 현재 프로젝트의 Unity 버전과 C# 버전에 맞는 문법을 사용해.
+- target-typed new(), record, nullable reference type 등 지원 여부가 불확실한 최신 문법은 피하고 명시적인 문법을 사용해.
+- 외부 라이브러리는 추가하지 마.
+- Odin Inspector, UniTask, DOTween, Addressables는 사용하지 마.
+- MVP 기준으로 단순하지만 확장 가능한 구조를 만들어.
+- 기존 프로젝트에 동일하거나 비슷한 기능이 있으면 새로 만들지 말고 재사용 또는 최소 수정해.
+- 작업 전 반드시 git status를 확인하고, 기존 사용자 변경사항을 덮어쓰지 마.
+
+==================================================
+1. 게임 핵심 방향
+==================================================
+
+게임 콘텐츠 비중:
+
+- 발톱 복원 플레이: 60%
+- 국가별 네일 디자인 수집: 25%
+- 복원샵 및 살롱 성장: 15%
+
+핵심 플레이 흐름:
+
+1. 상태 진단
+2. 오염 제거
+3. 손상 부위 제거
+4. 손상 발톱 복원
+5. 발톱 모양 선택
+6. 국가별 네일아트
+7. 전후 비교
+8. 디자인 도감 등록
+9. 코인 및 살롱 성장 보상
+
+단, 모든 스테이지에서 처음부터 전체 과정을 수행하지 않는다.
+
+스테이지가 올라갈수록 이전 작업을 유지하면서 새로운 시술 단계와 난이도 규칙이 누적된다.
+
+예시:
+
+Stage 1
+- Diagnosis
+
+Stage 2
+- Diagnosis
+- DirtRemoval
+
+Stage 3
+- Diagnosis
+- DirtRemoval
+- DamagedNailRemoval
+
+Stage 4
+- Diagnosis
+- DirtRemoval
+- DamagedNailRemoval
+- NailRepair
+
+Stage 5
+- 이전 과정
+- NailShape 추가
+
+Stage 6
+- 이전 과정
+- NailArt 추가
+
+이후 스테이지:
+- 같은 작업의 난이도 상승
+- 복합 손상
+- 숨겨진 오염
+- 작은 작업 영역
+- 움직이는 타깃
+- 제한 시간
+- 정확한 도구 순서
+- 여러 고객 요청 조건
+- 두 개 이상의 동시 작업 영역
+- 희귀 고객 및 보스 고객
+
+전후 비교, 도감 등록, 살롱 성장 보상은 TreatmentType 단계가 아니라 스테이지 완료 후 결과 처리로 구현한다.
+
+==================================================
+2. 현재 Scene 구조
+==================================================
+
+현재 Scene은 정확히 3개다.
+
+1. Main Scene
+- 시작하기 버튼이 있다.
+- 시작하기 버튼을 누르면 Stage Scene으로 이동한다.
+
+2. Stage Scene
+- Stage Map 화면이 있다.
+- Stage Map에서 숫자 스테이지를 선택한다.
+- 스테이지 선택 후 같은 Stage Scene 안에서 Repair Shop Lobby Panel을 연다.
+- 복원샵 로비에서 룰렛을 돌려 해당 스테이지의 고객을 선택한다.
+- 룰렛 결과 고객이 확정되면 InGame Scene으로 이동한다.
+
+3. InGame Scene
+- 선택된 고객과 선택된 스테이지 설정을 바탕으로 발톱 복원 플레이를 진행한다.
+- 완료 후 결과 화면을 표시한다.
+- 결과 화면에서 Stage Scene의 복원샵 로비 또는 스테이지맵으로 돌아갈 수 있다.
+
+중요:
+- Main, Stage, InGame 3개 Scene 구조를 유지해.
+- 새로운 Scene을 만들지 마.
+- Stage Map과 Repair Shop Lobby는 Stage Scene 내부 Panel 전환으로 구현해.
+- 룰렛 결과창도 Stage Scene 내부 Popup으로 구현해.
+- 결과 화면은 InGame Scene 내부 Panel로 구현해.
+- 현재 Scene 이름이 실제로 Main, Stage, InGame인지 프로젝트에서 확인하고, 다르면 실제 이름을 기준으로 설계해.
+
+전체 흐름:
+
+Main Scene
+-> Start Button
+-> Stage Scene
+-> Stage Map Panel
+-> Stage 선택
+-> Repair Shop Lobby Panel
+-> 고객 룰렛
+-> 고객 결과 확정
+-> InGame Scene
+-> Treatment Gameplay
+-> Result Panel
+-> Stage Scene 복귀 또는 Main Scene 복귀
+
+==================================================
+3. 데이터 설계 원칙
+==================================================
+
+ScriptableObject는 변경되지 않는 원본 게임 데이터에 사용한다.
+
+PlayerSaveData는 플레이어의 영구 진행 상태에 사용한다.
+
+GameSessionContext는 Scene 사이의 현재 선택 정보를 임시로 보관한다.
+
+역할을 명확히 분리해.
+
+ScriptableObject:
+- 스테이지 정의
+- 고객 정의
+- 도구 정의
+- 네일 디자인 정의
+- 살롱 시설 정의
+- 난이도 정의
+- 보상 정의
+
+SaveData:
+- 코인
+- 고객 클리어 여부
+- 최고 별점
+- 최고 점수
+- 해금한 네일
+- 살롱 레벨
+- 시설 레벨
+- 도구 레벨
+- 직전 룰렛 고객
+- 무료 회전 횟수
+- 최초 보상 수령 여부
+
+GameSessionContext:
+- 현재 선택된 WorldData
+- 현재 선택된 StageGroupData
+- 현재 선택된 CustomerStageData
+- 현재 선택된 NailDesignData
+- InGame 완료 후 돌아갈 Stage Scene 화면 상태
+
+ScriptableObject에 런타임 진행 상태를 저장하지 마.
+
+SaveData에 ScriptableObject 참조를 저장하지 말고 ID 문자열만 저장해.
+
+==================================================
+4. 데이터 관계
+==================================================
+
+권장 관계:
+
+WorldData
+└─ List<StageGroupData>
+   └─ List<RouletteCustomerEntry>
+      └─ CustomerStageData
+         ├─ List<TreatmentStepData>
+         └─ List<NailDesignData>
+
+StageGroupData:
+- 스테이지맵에서 누르는 숫자 스테이지 하나
+
+CustomerStageData:
+- 복원샵 룰렛에서 선택되는 실제 고객 한 명
+
+예시:
+
+world_korea
+└─ stage_group_001
+   ├─ customer_001_mina
+   ├─ customer_001_yuna
+   └─ customer_001_sora
+
+스테이지 번호와 실제 고객 플레이 데이터를 동일 객체로 만들지 마.
+
+==================================================
+5. TreatmentType
+==================================================
+
+TreatmentType enum을 구현해.
+
+항목:
+
+- Diagnosis
+- DirtRemoval
+- NailTrimming
+- IngrownNailCare
+- DamagedNailRemoval
+- NailRepair
+- NailExtension
+- NailShape
+- NailArt
+
+다음 항목은 TreatmentType에 넣지 마.
+
+- BeforeAfterResult
+- CollectionRegistration
+- SalonReward
+- SaveResult
+
+이 항목들은 스테이지 완료 후 결과 처리로 구현한다.
+
+==================================================
+6. WorldData
+==================================================
+
+WorldData ScriptableObject 필드:
+
+- string worldId
+- string displayName
+- string countryCode
+- Sprite mapBackground
+- List<StageGroupData> stageGroups
+
+CreateAssetMenu:
+
+FootNailGame/World
+
+==================================================
+7. StageGroupData
+==================================================
+
+StageGroupData는 스테이지맵의 숫자 버튼 하나에 해당한다.
+
+필드:
+
+- string stageGroupId
+- string displayName
+- int mapNumber
+- Sprite stageThumbnail
+- Sprite lobbyBackground
+- List<TreatmentType> enabledTreatmentTypes
+- StageDifficultyData difficulty
+- List<RouletteCustomerEntry> rouletteCustomers
+- int unlockRequiredStars
+- int freeSpinCount
+- int respinCoinCost
+- float completedCustomerWeightMultiplier
+- float previousCustomerWeightMultiplier
+- int firstClearRewardCoins
+- int repeatClearRewardCoins
+- int salonExpReward
+- bool showBeforeAfterResult
+- bool registerSelectedNailDesign
+- bool grantSalonReward
+- NailDesignData completionRewardNailDesign
+
+CreateAssetMenu:
+
+FootNailGame/Stage Group
+
+중요:
+- 스테이지 번호별 진행 단계를 switch문으로 하드코딩하지 마.
+- enabledTreatmentTypes를 Inspector에서 설정하게 해.
+- 순서는 enabledTreatmentTypes의 List 순서를 따른다.
+
+예시:
+
+stage_group_001:
+- Diagnosis
+
+stage_group_002:
+- Diagnosis
+- DirtRemoval
+
+stage_group_003:
+- Diagnosis
+- DirtRemoval
+- DamagedNailRemoval
+
+stage_group_004:
+- Diagnosis
+- DirtRemoval
+- DamagedNailRemoval
+- NailRepair
+
+==================================================
+8. StageDifficultyData
+==================================================
+
+StageDifficultyData는 ScriptableObject가 아닌 Serializable class로 구현해.
+
+필드:
+
+- float timeLimit
+- int maxMistakes
+- float targetScale
+- float toolEfficiencyMultiplier
+- int dirtCount
+- int damagedAreaCount
+- int targetCount
+- int simultaneousTargetCount
+- int requiredAccuracyPercent
+- int customerRequestCount
+- bool useHiddenTargets
+- bool useMovingTargets
+- bool requireCorrectToolOrder
+- bool requireExactNailShape
+- bool requireExactNailDesign
+- bool failOnTimeOver
+- bool failOnMistakeLimit
+
+초반 기본값 예시:
+
+- timeLimit: 0
+- maxMistakes: 10
+- targetScale: 1.2
+- toolEfficiencyMultiplier: 1.2
+- dirtCount: 1
+- targetCount: 1
+- requiredAccuracyPercent: 60
+- useHiddenTargets: false
+- useMovingTargets: false
+
+후반 예시:
+
+- timeLimit: 60
+- maxMistakes: 2
+- targetScale: 0.7
+- toolEfficiencyMultiplier: 0.8
+- dirtCount: 5
+- targetCount: 4
+- requiredAccuracyPercent: 90
+- useHiddenTargets: true
+- useMovingTargets: true
+- requireCorrectToolOrder: true
+- requireExactNailShape: true
+- requireExactNailDesign: true
+
+원본 난이도 데이터를 런타임에 직접 수정하지 마.
+
+==================================================
+9. RouletteCustomerEntry
+==================================================
+
+RouletteCustomerEntry는 Serializable class로 구현해.
+
+필드:
+
+- CustomerStageData customer
+- int baseWeight
+- bool isRare
+- int minimumClearCount
+
+검증:
+- customer가 null이면 경고
+- baseWeight가 0 이하이면 경고
+- 같은 고객이 하나의 StageGroupData에 중복되면 경고
+
+==================================================
+10. CustomerStageData
+==================================================
+
+CustomerStageData는 룰렛으로 뽑히는 실제 고객 데이터다.
+
+필드:
+
+- string customerStageId
+- string customerName
+- Sprite customerPortrait
+- Sprite footPreview
+- Sprite beforeNailSprite
+- Sprite afterNailSprite
+- string requestText
+- List<TreatmentStepData> treatmentSteps
+- List<NailDesignData> availableNailDesigns
+- string requestedNailShapeId
+- NailDesignData requestedNailDesign
+- int clearRewardCoins
+- int clearRewardSalonExp
+
+CreateAssetMenu:
+
+FootNailGame/Customer
+
+중요:
+- 고객은 자신이 지원하는 전체 TreatmentStepData를 가진다.
+- 실제 실행 단계는 StageGroupData.enabledTreatmentTypes로 필터링한다.
+- 고객마다 Stage 1용, Stage 2용, Stage 3용 데이터를 별도로 복제하지 마.
+- CustomerStageData 원본 List를 런타임에 수정하지 마.
+- 동일한 TreatmentType이 두 번 들어가면 경고해.
+
+==================================================
+11. TreatmentStepData
+==================================================
+
+TreatmentStepData는 ScriptableObject가 아닌 Serializable class로 구현해.
+
+필드:
+
+- string stepId
+- TreatmentType treatmentType
+- ToolData requiredTool
+- string instructionText
+- Sprite startSprite
+- Sprite completedSprite
+- float baseRequiredProgress
+- float baseTimeLimit
+- int baseMaxMistakes
+- int baseTargetCount
+- float baseTargetScale
+- float accuracyWeight
+- bool isOptional
+- List<DiagnosisOptionData> diagnosisOptions
+- string correctDiagnosisId
+
+단계별로 필요 없는 필드는 비워둘 수 있게 해.
+
+과도하게 TreatmentType별 하위 클래스를 만들지 마.
+
+==================================================
+12. DiagnosisOptionData
+==================================================
+
+DiagnosisOptionData는 Serializable class로 구현해.
+
+필드:
+
+- string optionId
+- string displayName
+- Sprite icon
+- bool isCorrect
+
+Diagnosis 단계는 초기 MVP에서 정답 선택형으로 구현한다.
+
+틀린 선택 시:
+- 실수 횟수 증가
+- 정확도 감소
+- 다시 선택 가능
+
+복잡한 진단 시스템이나 질병 시뮬레이션은 만들지 마.
+
+==================================================
+13. RuntimeTreatmentStepData
+==================================================
+
+CustomerStageData의 원본 TreatmentStepData에 난이도를 직접 덮어쓰지 마.
+
+런타임 실행용 복사 데이터인 RuntimeTreatmentStepData를 일반 C# class로 구현해.
+
+필드 예시:
+
+- TreatmentStepData source
+- TreatmentType treatmentType
+- ToolData requiredTool
+- float requiredProgress
+- float timeLimit
+- int maxMistakes
+- int targetCount
+- int simultaneousTargetCount
+- float targetScale
+- float toolEfficiencyMultiplier
+- int requiredAccuracyPercent
+- bool useHiddenTargets
+- bool useMovingTargets
+- bool requireCorrectToolOrder
+
+BuildRuntimeSteps에서 생성한다.
+
+생성 규칙:
+
+1. StageGroupData.enabledTreatmentTypes 순서를 순회
+2. CustomerStageData에서 같은 TreatmentType을 찾음
+3. 찾은 단계만 RuntimeTreatmentStepData로 복사
+4. StageDifficultyData 적용
+5. 필수 단계가 없으면 명확한 경고 출력
+6. 원본 ScriptableObject나 Serializable data는 수정하지 않음
+
+==================================================
+14. ToolData
+==================================================
+
+ToolData ScriptableObject 필드:
+
+- string toolId
+- string displayName
+- Sprite icon
+- GameObject toolPrefab
+- int maxLevel
+- float baseEfficiency
+- float efficiencyPerLevel
+- int[] upgradeCosts
+
+CreateAssetMenu:
+
+FootNailGame/Tool
+
+예시:
+
+- tool_scraper
+- tool_nipper
+- tool_file
+- tool_brush
+- tool_gel
+
+==================================================
+15. NailDesignData
+==================================================
+
+NailDesignData ScriptableObject 필드:
+
+- string designId
+- string displayName
+- string countryCode
+- string category
+- Sprite thumbnail
+- Sprite nailSprite
+- int rarity
+- int unlockPrice
+
+CreateAssetMenu:
+
+FootNailGame/Nail Design
+
+예시:
+
+- nail_korea_syrup_pink
+- nail_korea_mother_of_pearl
+- nail_korea_flower
+- nail_japan_sakura
+- nail_france_french_classic
+- nail_india_henna_gold
+
+==================================================
+16. SalonUpgradeData
+==================================================
+
+SalonUpgradeData ScriptableObject 필드:
+
+- string upgradeId
+- string displayName
+- Sprite icon
+- int maxLevel
+- int[] upgradeCosts
+- GameObject[] levelVisuals
+- float rewardMultiplierPerLevel
+
+CreateAssetMenu:
+
+FootNailGame/Salon Upgrade
+
+초기 샘플:
+
+- salon_worktable
+
+살롱 성장 비중은 15%이므로 복잡한 경영 시뮬레이션으로 확장하지 마.
+
+==================================================
+17. StageResultSettings
+==================================================
+
+StageResultSettings ScriptableObject를 구현해.
+
+필드:
+
+- int baseClearScore
+- int perfectAccuracyBonus
+- int requestedShapeBonus
+- int requestedDesignBonus
+- int timeBonusMaximum
+- int mistakePenaltyPerCount
+- int threeStarMinimumScore
+- int twoStarMinimumScore
+- int oneStarMinimumScore
+
+또는 현재 구조상 더 단순한 설정이 적합하면 제안해.
+
+CreateAssetMenu:
+
+FootNailGame/Result Settings
+
+난이도와 별점 수치를 코드에 흩어놓지 마.
+
+==================================================
+18. GameDatabase
+==================================================
+
+GameDatabase ScriptableObject를 구현해.
+
+Inspector List:
+
+- List<WorldData> worlds
+- List<StageGroupData> stageGroups
+- List<CustomerStageData> customers
+- List<ToolData> tools
+- List<NailDesignData> nailDesigns
+- List<SalonUpgradeData> salonUpgrades
+
+런타임 Dictionary 캐시:
+
+- worldById
+- stageGroupById
+- customerById
+- toolById
+- nailDesignById
+- salonUpgradeById
+
+조회 메서드:
+
+- GetWorld(string id)
+- GetStageGroup(string id)
+- GetCustomer(string id)
+- GetTool(string id)
+- GetNailDesign(string id)
+- GetSalonUpgrade(string id)
+
+중요:
+- Dictionary는 Unity 직렬화 대상으로 사용하지 마.
+- List는 Inspector에 노출하고 Dictionary는 런타임 초기화해.
+- 중복 ID가 있으면 명확한 오류를 출력해.
+- ID는 Asset 이름에서 자동 생성하지 마.
+- 에셋 이름을 변경해도 ID가 변경되지 않게 해.
+
+CreateAssetMenu:
+
+FootNailGame/Game Database
+
+==================================================
+19. GameSessionContext
+==================================================
+
+GameSessionContext를 구현해.
+
+역할:
+- Scene 간 현재 선택 데이터 전달
+- 영구 저장 아님
+- Stage Scene에서 선택한 데이터를 InGame Scene으로 전달
+- InGame 완료 후 Stage Scene 복귀 위치 전달
+
+보관 데이터:
+
+- WorldData selectedWorld
+- StageGroupData selectedStageGroup
+- CustomerStageData selectedCustomer
+- NailDesignData selectedNailDesign
+- StageReturnTarget returnTarget
+- bool reopenRepairShopLobby
+
+필요 메서드:
+
+- SetSelectedWorld(WorldData world)
+- SetSelectedStageGroup(StageGroupData stageGroup)
+- SetSelectedCustomer(CustomerStageData customer)
+- SetSelectedNailDesign(NailDesignData design)
+- PrepareStageReturn(StageReturnTarget target)
+- ClearCustomerSelection()
+- ClearAll()
+
+중요:
+- DontDestroyOnLoad를 사용해도 되지만 인스턴스는 하나만 존재해야 한다.
+- 중복 인스턴스 방지
+- 모든 Manager를 싱글톤으로 만들지 마.
+- selectedCustomer 또는 selectedStageGroup이 없으면 InGame Scene 진입 금지
+- 기존 프로젝트에 비슷한 Session Manager가 있으면 재사용 검토
+
+==================================================
+20. SceneNames 및 SceneLoader
+==================================================
+
+Scene 이름 문자열을 여러 파일에 하드코딩하지 마.
+
+SceneNames 정적 클래스를 만들거나 기존 Scene 관리 시스템을 재사용해.
+
+예:
+
+- SceneNames.Main
+- SceneNames.Stage
+- SceneNames.InGame
+
+SceneLoader 또는 간단한 SceneTransitionController 역할:
+
+- 중복 LoadScene 방지
+- Scene 전환 중 입력 차단
+- 연속 버튼 클릭 방지
+- 잘못된 Scene 이름 검증
+- 필요하면 최소 로딩 오버레이 지원
+
+새로운 복잡한 네비게이션 프레임워크는 만들지 마.
+
+==================================================
+21. Main Scene
+==================================================
+
+MainSceneController 역할:
+
+- 시작하기 버튼 처리
+- 중복 클릭 방지
+- Stage Scene 로드
+
+기존 시작하기 버튼 스크립트가 있으면 새로 만들지 말고 최소 수정해.
+
+==================================================
+22. Stage Scene
+==================================================
+
+Stage Scene 내부 Panel:
+
+- StageMapPanel
+- RepairShopLobbyPanel
+- RouletteResultPopup
+
+StageSceneController 역할:
+
+- Stage Map 표시
+- StageGroupData 선택
+- 스테이지 잠금 확인
+- 선택된 StageGroupData를 GameSessionContext에 저장
+- Repair Shop Lobby Panel 열기
+- 뒤로가기 처리
+- InGame 완료 후 복귀 시 이전 복원샵 로비 재오픈
+- 현재 총 별 개수와 해금 상태 갱신
+
+StageMapView 역할:
+
+- StageGroupData 목록 표시
+- 스테이지 숫자 표시
+- 잠금 상태 표시
+- 획득 별 개수 표시
+- 클릭 이벤트를 StageSceneController에 전달
+- 게임 규칙을 직접 소유하지 않음
+
+기존 버튼이 직접 Scene을 로드한다면 Controller를 거치도록 최소 수정해.
+
+==================================================
+23. 고객 룰렛
+==================================================
+
+복원샵 로비의 고객 선택은 일반 카드 선택이 아니라 룰렛 방식이다.
+
+룰렛 처리 순서:
+
+1. 유효 고객 후보 생성
+2. 가중치 기반으로 결과 고객을 먼저 결정
+3. 룰렛 애니메이션 시작
+4. 감속
+5. 이미 결정된 고객 위치에서 정지
+6. 결과 고객 강조
+7. RouletteResultPopup 표시
+8. 사용자가 Start Treatment를 누르면 InGame Scene 이동
+
+룰렛 물리 회전 결과를 기준으로 고객을 결정하지 마.
+
+RouletteController 역할:
+
+- Initialize(StageGroupData stageGroup)
+- BuildCandidateList()
+- SelectCustomerByWeight()
+- ApplyCompletedCustomerPenalty()
+- ApplyPreviousCustomerPenalty()
+- Spin()
+- ConfirmResult()
+- ResetSpinState()
+
+룰렛 규칙:
+
+- 미완료 고객은 기본 가중치 사용
+- 완료 고객은 가중치 감소
+- 직전 고객은 가중치 감소
+- 잠긴 고객은 후보 제외
+- minimumClearCount 조건 미충족 고객 제외
+- 유효 후보가 없으면 회전하지 않음
+- 같은 고객 연속 등장 확률 완화
+- 모든 고객 완료 후에는 전체 고객을 다시 정상적으로 선택 가능
+- 연속 클릭 방지
+- 회전 중 입력 잠금
+- 테스트용 선택적 seed 지원
+- UnityEngine.Random 또는 System.Random 중 하나만 일관되게 사용
+
+RouletteView 역할:
+
+- 고객 아이콘 배치
+- 룰렛 회전 애니메이션
+- 감속
+- 지정 결과 위치에서 정지
+- 결과 고객 강조
+- 애니메이션 완료 이벤트 전달
+
+현재 DOTween을 사용하지 않는 프로젝트라면 Coroutine으로 구현해.
+
+RouletteResultPopup 표시:
+
+- 고객 이름
+- 고객 이미지
+- 발 상태 미리보기
+- 고객 요청 문구
+- Start Treatment 버튼
+- Respin 버튼
+- Back 버튼
+
+수익화는 현재 구현하지 마.
+
+다음 확장 훅만 준비해:
+
+- 무료 재회전
+- 코인 재회전
+- 보상형 광고 재회전
+
+광고 SDK는 연결하지 마.
+
+==================================================
+24. InGameSceneController
+==================================================
+
+역할:
+
+- GameSessionContext에서 selectedStageGroup과 selectedCustomer 조회
+- 데이터가 없으면 Stage Scene으로 안전하게 복귀
+- TreatmentFlowController 시작
+- 플레이 UI 초기화
+- 스테이지 완료 후 StageResultView 표시
+- 중도 종료 처리
+- 결과 화면에서 Stage Scene 또는 Main Scene 이동
+
+필요 흐름:
+
+Start()
+-> 세션 검증
+-> TreatmentFlowController.StartStage(stageGroup, customer)
+-> 단계 진행
+-> 결과 계산
+-> 보상 및 저장
+-> 결과 UI 표시
+
+==================================================
+25. TreatmentFlowController
+==================================================
+
+필요 공개 메서드:
+
+- StartStage(StageGroupData stageGroup, CustomerStageData customer)
+- BuildRuntimeSteps(StageGroupData stageGroup, CustomerStageData customer)
+- StartCurrentStep()
+- AddProgress(float amount)
+- RegisterMistake()
+- SetStepAccuracy(float value)
+- CompleteCurrentStep()
+- RestartCurrentStep()
+- SelectDiagnosis(string optionId)
+- SelectNailShape(string shapeId)
+- SelectNailDesign(NailDesignData design)
+- CompleteStage()
+- QuitStage()
+
+관리 상태:
+
+- StageGroupData currentStageGroup
+- CustomerStageData currentCustomer
+- List<RuntimeTreatmentStepData> runtimeSteps
+- int currentStepIndex
+- float currentProgress
+- int currentStepMistakes
+- int totalMistakes
+- float stepStartTime
+- float totalPlayTime
+- string selectedNailShapeId
+- NailDesignData selectedNailDesign
+- List<StepResultData> stepResults
+- bool isStageRunning
+- bool isStepRunning
+- bool isCompleted
+
+필요 이벤트:
+
+- OnStageStarted
+- OnStepStarted
+- OnProgressChanged
+- OnMistakeChanged
+- OnStepCompleted
+- OnDiagnosisSelected
+- OnNailShapeSelected
+- OnNailDesignSelected
+- OnStageCompleted
+- OnStageFailed
+
+UnityEvent를 과도하게 Inspector에 노출하지 말고 C# event 또는 Action을 사용해.
+
+이벤트 구독은 OnEnable에서 하고 OnDisable 또는 OnDestroy에서 해제해.
+
+==================================================
+26. 공통 시술 입력
+==================================================
+
+오염 제거, 손상 제거, 복원 등의 초기 MVP 입력은 공통 진행 시스템으로 처리한다.
+
+공통 처리:
+
+- 드래그 또는 클릭 입력으로 progress 증가
+- 올바른 영역 입력 시 progress 증가
+- 잘못된 영역 입력 시 mistake 증가
+- requiredProgress 도달 시 단계 완료
+- ToolData 현재 효율 반영
+- targetCount 반영
+- targetScale 반영
+- hidden target 반영
+- moving target 반영
+- 정확도 기록
+
+초기에는 ToolInteractionController 하나 또는 매우 얕은 구조로 구현해.
+
+TreatmentType마다 대규모 상속 트리를 만들지 마.
+
+필요하면 공통 기반 1개와 특수 단계 컴포넌트만 사용해.
+
+==================================================
+27. NailShape
+==================================================
+
+발톱 모양 예시:
+
+- Round
+- Square
+- Oval
+- Almond
+
+초기에는 string ID 또는 enum으로 구현해.
+
+NailShapeData ScriptableObject를 새로 만드는 것이 과하면 만들지 마.
+
+선택 결과:
+
+- StageResultData에 기록
+- 고객 요청 모양과 비교
+- 점수와 별점에 반영
+- 네일아트 미리보기 연결 가능
+
+==================================================
+28. NailArt
+==================================================
+
+CustomerStageData.availableNailDesigns를 사용해.
+
+기능:
+
+- 디자인 목록 표시
+- 잠금 여부 표시
+- 국가 코드 표시
+- 고객 요청 디자인 강조
+- 디자인 미리보기
+- 선택 확정
+- 요청 디자인 일치 여부 기록
+
+NailArtSelectionView는 UI 표시와 입력 전달만 담당해.
+
+게임 규칙과 해금 여부 판단은 Manager 또는 Controller가 담당해.
+
+==================================================
+29. StageResultData
+==================================================
+
+StageResultData는 Serializable class로 구현해.
+
+필드:
+
+- string stageGroupId
+- string customerStageId
+- bool isCleared
+- int stars
+- int score
+- float completionTime
+- int totalMistakes
+- float averageAccuracy
+- string selectedNailShapeId
+- string selectedNailDesignId
+- bool matchedRequestedShape
+- bool matchedRequestedDesign
+- int rewardCoins
+- int rewardSalonExp
+- bool isFirstClear
+- bool unlockedNewNailDesign
+- string unlockedNailDesignId
+- bool salonLevelUp
+- int previousSalonLevel
+- int currentSalonLevel
+
+==================================================
+30. StageResultCalculator
+==================================================
+
+고려 요소:
+
+- 클리어 여부
+- 총 실수 횟수
+- 완료 시간
+- 단계별 정확도
+- 난이도 요구 정확도
+- 고객 요청 발톱 모양 일치
+- 고객 요청 네일 디자인 일치
+- 제한 시간 충족
+- 도구 순서 충족
+
+기본 방향:
+
+3 stars:
+- 높은 정확도
+- 실수 제한 이하
+- 주요 고객 요청 충족
+- 제한 시간이 있다면 시간 내 완료
+
+2 stars:
+- 클리어 성공
+- 일부 조건 미달
+
+1 star:
+- 최소 조건으로 클리어
+
+StageResultSettings 값을 사용하고, 점수와 별점 기준을 코드에 흩어놓지 마.
+
+==================================================
+31. 전후 비교
+==================================================
+
+StageResultView 표시:
+
+- beforeNailSprite
+- afterNailSprite 또는 최종 결과
+- 좌우 비교 또는 슬라이더 비교
+- 별 개수
+- 최종 점수
+- 완료 시간
+- 실수 횟수
+- 평균 정확도
+- 획득 코인
+- 획득 살롱 경험치
+- 새 네일 디자인 등록 여부
+- 살롱 레벨업 여부
+
+초기 MVP에서는 런타임 캡처 대신 CustomerStageData의 before/after Sprite를 사용해.
+
+나중에 런타임 캡처로 교체하기 쉽도록 View 인터페이스가 아닌 단순 메서드 구조를 제안해.
+
+==================================================
+32. NailCollectionManager
+==================================================
+
+기능:
+
+- bool IsUnlocked(string designId)
+- bool Unlock(string designId)
+- List<string> GetUnlockedDesignIds()
+- List<NailDesignData> GetUnlockedDesigns()
+- List<NailDesignData> GetUnlockedDesignsByCountry(string countryCode)
+
+규칙:
+
+- 중복 해금 방지
+- 미해금 디자인만 신규 등록 처리
+- 이미 해금된 경우 중복 최초 보상 지급 금지
+- SaveManager와 연동
+
+NailCollectionView:
+
+- 국가별 필터
+- 잠긴 디자인 표시
+- 해금된 디자인 표시
+- 썸네일과 이름 표시
+
+초기에는 데이터 연결 가능한 최소 View만 구현해.
+
+==================================================
+33. SalonProgressionManager
+==================================================
+
+기능:
+
+- AddSalonExp(int amount)
+- GetSalonLevel()
+- GetSalonExp()
+- GetRequiredExpForNextLevel()
+- UpgradeFacility(string upgradeId)
+- GetFacilityLevel(string upgradeId)
+- GetUpgradeCost(string upgradeId)
+- IsMaxLevel(string upgradeId)
+- GetRewardMultiplier()
+
+규칙:
+
+- 고객 완료 시 경험치 획득
+- 특정 레벨에서 시설 해금 가능
+- 코인을 사용해 시설 업그레이드
+- 최대 레벨 검사
+- 비용 배열 범위 검사
+- 레벨업 결과를 StageResultData에 전달
+
+복잡한 오프라인 수익, 직원 고용, 경영 AI는 구현하지 마.
+
+==================================================
+34. ToolUpgradeManager
+==================================================
+
+기능:
+
+- GetToolLevel(string toolId)
+- GetUpgradeCost(string toolId)
+- CanUpgrade(string toolId)
+- Upgrade(string toolId)
+- GetEfficiency(string toolId)
+
+규칙:
+
+- 코인 부족 검사
+- 최대 레벨 검사
+- upgradeCosts 배열 범위 검사
+- SaveManager와 연동
+- ToolData 원본 수정 금지
+
+==================================================
+35. SaveData
+==================================================
+
+JsonUtility를 사용한 로컬 JSON 저장으로 구현해.
+
+저장 경로:
+
+Application.persistentDataPath
+
+필요 기능:
+
+- Save()
+- Load()
+- DeleteSave()
+- CreateDefaultSave()
+- RecoverFromInvalidSave()
+
+저장 파일이 없거나 JSON 오류가 발생하면 기본 데이터를 생성해.
+
+가능하면 다음 안전 저장 방식을 단순하게 적용해:
+
+1. 임시 파일 작성
+2. 기존 파일 교체
+3. 실패 시 기존 파일 유지
+
+과도한 암호화나 버전 마이그레이션 프레임워크는 만들지 마.
+
+PlayerSaveData 필드:
+
+- int saveVersion
+- int coins
+- int salonExp
+- int salonLevel
+- List<CustomerProgressData> customerProgress
+- List<StageGroupProgressData> stageGroupProgress
+- List<string> unlockedNailDesignIds
+- List<ToolProgressData> toolProgress
+- List<SalonUpgradeProgressData> salonUpgradeProgress
+- List<RouletteProgressData> rouletteProgress
+
+CustomerProgressData:
+
+- string customerStageId
+- bool isCleared
+- int bestStars
+- int bestScore
+- float bestCompletionTime
+- int clearCount
+
+StageGroupProgressData:
+
+- string stageGroupId
+- bool isUnlocked
+- int totalStars
+- bool completionRewardClaimed
+- int clearCount
+
+ToolProgressData:
+
+- string toolId
+- int level
+
+SalonUpgradeProgressData:
+
+- string upgradeId
+- int level
+
+RouletteProgressData:
+
+- string stageGroupId
+- int remainingFreeSpins
+- string previousCustomerId
+
+JsonUtility가 직렬화하지 못하는 Dictionary는 SaveData에 사용하지 마.
+
+==================================================
+36. 보상 중복 방지
+==================================================
+
+다음 보상을 구분해.
+
+최초 클리어 보상:
+- firstClearRewardCoins
+- 신규 네일 디자인
+- 스테이지 완료 보상
+- 특정 해금 보상
+
+반복 클리어 보상:
+- repeatClearRewardCoins
+- 기본 살롱 경험치 일부
+- 재플레이 점수 갱신
+
+규칙:
+
+- 최초 클리어 보상을 여러 번 지급하지 마.
+- completionRewardClaimed 또는 customer clearCount를 사용해 중복 지급 방지.
+- 네일 디자인 중복 해금 보상 방지.
+- 저장 완료 전 Scene 이동으로 보상이 유실되지 않도록 처리 순서를 명확히 해.
+
+추천 처리 순서:
+
+1. 결과 계산
+2. 최초 클리어 여부 확인
+3. 보상 계산
+4. SaveData 갱신
+5. Save 실행
+6. Result View 표시
+
+==================================================
+37. 스테이지 잠금 및 해금
+==================================================
+
+스테이지 해금은 StageGroupData.unlockRequiredStars 기반으로 처리해.
+
+기능:
+
+- 전체 또는 이전 구간 별 개수 계산
+- 조건 충족 시 해금
+- 이미 해금된 스테이지는 다시 잠기지 않음
+- 첫 스테이지는 기본 해금
+- SaveData와 동기화
+
+처음에는 복잡한 분기 맵을 만들지 말고 순차 진행 중심으로 구현해.
+
+==================================================
+38. 캔디크러시식 난이도 상승
+==================================================
+
+스테이지가 높아질수록 단순히 단계 개수만 늘리지 마.
+
+세 가지 축을 함께 사용해.
+
+1. 새로운 TreatmentType 추가
+2. 기존 TreatmentType 수치 난이도 상승
+3. 새로운 장애 규칙 추가
+
+예시 난이도 계획:
+
+Stage 1:
+- Diagnosis
+- 제한 시간 없음
+- 큰 UI 선택지
+
+Stage 2:
+- Diagnosis + DirtRemoval
+- dirtCount 1
+- 큰 타깃
+
+Stage 3:
+- dirtCount 2
+- 정확도 기준 65%
+
+Stage 5:
+- DamagedNailRemoval 추가
+- maxMistakes 5
+
+Stage 8:
+- NailRepair 추가
+- targetScale 1.0
+
+Stage 10:
+- timeLimit 90초
+
+Stage 12:
+- NailShape 추가
+
+Stage 15:
+- requireExactNailShape true
+
+Stage 18:
+- NailArt 추가
+
+Stage 20:
+- requireExactNailDesign true
+
+Stage 25:
+- useHiddenTargets true
+
+Stage 30:
+- useMovingTargets true
+
+Stage 35:
+- targetScale 0.8
+
+Stage 40:
+- requireCorrectToolOrder true
+
+Stage 45:
+- customerRequestCount 2
+
+Stage 50:
+- simultaneousTargetCount 2
+
+Stage 60:
+- 복합 손상 고객
+- 높은 정확도 요구
+- 희귀 고객
+
+이 값은 샘플일 뿐이며 코드에 하드코딩하지 마.
+StageGroupData Asset에서 설정하게 해.
+
+==================================================
+39. UI View 클래스
+==================================================
+
+완성된 UI 디자인을 새로 만들지 말고 기존 UI와 연결 가능한 최소 View를 구현해.
+
+필요 View:
+
+- StageMapView
+- StageButtonView
+- RepairShopLobbyView
+- RouletteView
+- RouletteResultPopup
+- TreatmentHudView
+- DiagnosisView
+- NailShapeSelectionView
+- NailArtSelectionView
+- StageResultView
+- NailCollectionView
+- SalonUpgradeView
+
+View 원칙:
+
+- 데이터와 게임 규칙을 직접 소유하지 않음
+- 표시 및 버튼 입력 전달
+- Controller 또는 Manager 이벤트 구독
+- 구독 해제 필수
+- FindObjectOfType 반복 호출 금지
+- Update에서 불필요한 탐색 금지
+- LINQ를 매 프레임 사용하지 마
+
+==================================================
+40. 폴더 구조
+==================================================
+
+현재 프로젝트의 기존 규칙을 먼저 확인해.
+
+별도 규칙이 없다면 다음을 제안해.
+
+Assets/00_Scripts/FootNailGame/
+  Core/
+  Data/
+  Save/
+  Session/
+  SceneFlow/
+  StageMap/
+  Roulette/
+  Gameplay/
+  NailArt/
+  Collection/
+  Salon/
+  Result/
+  UI/
+  Editor/
+
+단, 기존 프로젝트에 이미 유사한 폴더 구조가 있으면 기존 규칙을 우선해.
+
+==================================================
+41. 에디터 검증
+==================================================
+
+GameDatabase 또는 별도 Validator에 ContextMenu 검증 기능을 제공해.
+
+검증 항목:
+
+- ID 누락
+- ID 중복
+- null 참조
+- CustomerStageData의 빈 treatmentSteps
+- CustomerStageData의 중복 TreatmentType
+- StageGroupData의 빈 enabledTreatmentTypes
+- StageGroupData에 고객 없음
+- 룰렛 weight 0 이하
+- 룰렛 고객 중복
+- 사용 가능한 NailDesignData 없음
+- StageGroupData의 난이도 값 음수
+- targetScale 0 이하
+- requiredAccuracyPercent 범위 오류
+- ToolData upgradeCosts 범위 문제
+- SalonUpgradeData upgradeCosts 범위 문제
+- WorldData의 중복 StageGroupData
+- GameDatabase 목록 간 ID 중복
+
+Editor 전용 코드는 Editor 폴더 또는 UNITY_EDITOR 조건 안에 둬.
+
+==================================================
+42. 샘플 데이터
+==================================================
+
+구조 구현 후 샘플 데이터 생성 Editor 메뉴 또는 생성 가이드를 제공해.
+
+World:
+
+- world_korea
+- displayName: Korea Nail Salon
+
+Stage Groups:
+
+stage_group_001
+- mapNumber: 1
+- enabledTreatmentTypes:
+  - Diagnosis
+
+stage_group_002
+- mapNumber: 2
+- enabledTreatmentTypes:
+  - Diagnosis
+  - DirtRemoval
+
+stage_group_003
+- mapNumber: 3
+- enabledTreatmentTypes:
+  - Diagnosis
+  - DirtRemoval
+  - DamagedNailRemoval
+
+Customers:
+
+- customer_001_mina
+- customer_001_yuna
+- customer_001_sora
+
+Tools:
+
+- tool_scraper
+- tool_nipper
+- tool_file
+- tool_brush
+- tool_gel
+
+Nail Designs:
+
+- nail_korea_syrup_pink
+- nail_korea_mother_of_pearl
+- nail_korea_flower
+
+Salon Upgrade:
+
+- salon_worktable
+
+Mina 전체 지원 단계:
+
+1. Diagnosis
+2. DirtRemoval
+3. DamagedNailRemoval
+4. NailRepair
+5. NailShape
+6. NailArt
+
+StageGroupData에 따라 앞 단계 일부만 실행되게 해.
+
+==================================================
+43. 구현 단계
+==================================================
+
+한 번에 전체를 구현하지 마.
+
+다음 6단계로 나눠 진행해.
+
+1단계: 데이터 기반
+- TreatmentType
+- DiagnosisOptionData
+- TreatmentStepData
+- RuntimeTreatmentStepData
+- StageDifficultyData
+- RouletteCustomerEntry
+- WorldData
+- StageGroupData
+- CustomerStageData
+- ToolData
+- NailDesignData
+- SalonUpgradeData
+- StageResultSettings
+- GameDatabase
+- ID 및 데이터 검증
+
+2단계: 저장 및 세션
+- PlayerSaveData와 하위 진행 데이터
+- SaveManager
+- GameSessionContext
+- SceneNames
+- SceneLoader 또는 기존 Scene 이동 구조 보완
+
+3단계: Main 및 Stage Scene
+- MainSceneController
+- StageSceneController
+- StageMapView
+- StageButtonView
+- RepairShopLobbyController
+- RepairShopLobbyView
+- RouletteController
+- RouletteView
+- RouletteResultPopup
+
+4단계: InGame 핵심
+- InGameSceneController
+- TreatmentFlowController
+- BuildRuntimeSteps
+- Diagnosis
+- 공통 ToolInteractionController
+- 진행도, 실수, 시간, 정확도 처리
+- NailShapeSelectionView
+- NailArtSelectionView
+
+5단계: 결과 및 성장
+- StageResultData
+- StepResultData
+- StageResultCalculator
+- StageResultView
+- NailCollectionManager
+- NailCollectionView
+- SalonProgressionManager
+- SalonUpgradeView
+- ToolUpgradeManager
+- 보상 및 중복 방지
+
+6단계: 샘플 및 전체 검증
+- 샘플 데이터 생성 Editor Tool
+- Scene 및 Inspector 연결 가이드
+- 전체 컴파일 오류 가능성 검사
+- 저장 테스트
+- 룰렛 테스트
+- 스테이지 난이도 적용 테스트
+- 결과 보상 중복 테스트
+
+각 단계 완료 후 반드시 멈춰.
+
+다음 내용을 보고해:
+
+1. 생성 파일
+2. 수정 파일
+3. 구현 내용
+4. 기존 코드와 연결한 부분
+5. Inspector에서 연결할 항목
+6. 컴파일 오류 가능성
+7. 테스트 방법
+8. 다음 단계에서 필요한 확인 사항
+
+내가 승인하기 전에는 다음 단계로 진행하지 마.
+
+==================================================
+44. 첫 응답 형식
+==================================================
+
+첫 응답에서는 코드나 파일을 수정하지 말고 다음만 작성해.
+
+1. 현재 프로젝트 분석 결과
+2. 현재 Main, Stage, InGame Scene 구조
+3. 기존 관련 Script 및 UI 목록
+4. 재사용 가능한 기존 코드
+5. 충돌 가능성이 있는 기존 코드
+6. 추천 아키텍처
+7. 데이터 관계도
+8. Scene별 담당 클래스
+9. 생성할 파일 목록
+10. 수정할 파일 목록
+11. Inspector 연결 항목
+12. 구현 단계
+13. 예상 위험 요소
+14. 구현 전에 확인해야 할 질문
+
+내 승인 전에는 어떠한 파일도 생성하거나 수정하지 마.
