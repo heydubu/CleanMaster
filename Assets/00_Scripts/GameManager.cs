@@ -19,8 +19,8 @@ public class GameManager : MonoBehaviour
     public void StartStage(int stageIndex)
     {
         CurrentStageIndex = stageIndex;
-        miniGameScreen.BeginStage(stageIndex);
         ScreenManager.Instance.ShowMiniGame();
+        miniGameScreen.BeginStage(stageIndex);
     }
 
     public void CompleteCurrentStage(float progress)
