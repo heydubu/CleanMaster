@@ -1,11 +1,11 @@
 using UnityEngine;
 
-public class ScreenManager : MonoBehaviour
+public class StageFlowManager : MonoBehaviour
 {
-    public static ScreenManager Instance { get; private set; }
+    public static StageFlowManager Instance { get; private set; }
 
-    [SerializeField] private UIScreen miniGameScreen;
-    [SerializeField] private UIScreen resultScreen;
+    [SerializeField] private UIScreen lobbyScreen;
+    [SerializeField] private UIScreen stageMapScreen;
 
     private UIScreen _current;
 
@@ -16,11 +16,11 @@ public class ScreenManager : MonoBehaviour
 
     private void Start()
     {
-        ShowMiniGame();
+        ShowLobby();
     }
 
-    public void ShowMiniGame() => SwitchTo(miniGameScreen);
-    public void ShowResult() => SwitchTo(resultScreen);
+    public void ShowLobby() => SwitchTo(lobbyScreen);
+    public void ShowStageMap() => SwitchTo(stageMapScreen);
 
     private void SwitchTo(UIScreen screen)
     {

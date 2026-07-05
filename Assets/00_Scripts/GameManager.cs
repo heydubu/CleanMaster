@@ -16,11 +16,10 @@ public class GameManager : MonoBehaviour
         Instance = this;
     }
 
-    public void StartStage(int stageIndex)
+    private void Start()
     {
-        CurrentStageIndex = stageIndex;
-        ScreenManager.Instance.ShowMiniGame();
-        miniGameScreen.BeginStage(stageIndex);
+        CurrentStageIndex = GameSession.SelectedStageIndex;
+        miniGameScreen.BeginStage(CurrentStageIndex);
     }
 
     public void CompleteCurrentStage(float progress)

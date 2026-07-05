@@ -64,13 +64,16 @@
     <Compile Include="Assets\00_Scripts\ScreenManager.cs" />
     <Compile Include="Assets\00_Scripts\SafeArea.cs" />
     <Compile Include="Assets\00_Scripts\UIScreen.cs" />
-    <Compile Include="Assets\00_Scripts\LobbyScreen.cs" />
+    <Compile Include="Assets\00_Scripts\StageLobbyScreen.cs" />
     <Compile Include="Assets\00_Scripts\CurrencyManager.cs" />
+    <Compile Include="Assets\00_Scripts\GameSession.cs" />
     <Compile Include="Assets\00_Scripts\MiniGameScreen.cs" />
     <Compile Include="Assets\00_Scripts\GameManager.cs" />
+    <Compile Include="Assets\00_Scripts\MainMenuController.cs" />
     <Compile Include="Assets\00_Scripts\StageProgress.cs" />
     <Compile Include="Assets\00_Scripts\DirtScrapeMiniGame.cs" />
     <Compile Include="Assets\00_Scripts\StageMapScreen.cs" />
+    <Compile Include="Assets\00_Scripts\StageFlowManager.cs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="UnityEngine">

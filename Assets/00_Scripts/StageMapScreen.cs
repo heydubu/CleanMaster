@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 public class StageMapScreen : UIScreen
@@ -6,18 +7,36 @@ public class StageMapScreen : UIScreen
     [SerializeField] private RectTransform buttonContainer;
     [SerializeField] private Button stageButtonTemplate;
     [SerializeField] private Button backButton;
+    [SerializeField] private Text coinsText;
+    [SerializeField] private Text gemsText;
+    [SerializeField] private string inGameSceneName = "InGame";
 
     private bool _builtOnce;
 
     private void Awake()
     {
-        backButton.onClick.AddListener(() => ScreenManager.Instance.ShowLobby());
+        backButton.onClick.AddListener(() => StageFlowManager.Instance.ShowLobby());
         stageButtonTemplate.gameObject.SetActive(false);
     }
 
     private void OnEnable()
     {
         BuildStageButtons();
+        RefreshCurrency();
+        CurrencyManager.Instance.OnCoinsChanged += RefreshCurrency;
+        CurrencyManager.Instance.OnGemsChanged += RefreshCurrency;
+    }
+
+    private void OnDisable()
+    {
+        CurrencyManager.Instance.OnCoinsChanged -= RefreshCurrency;
+        CurrencyManager.Instance.OnGemsChanged -= RefreshCurrency;
+    }
+
+    private void RefreshCurrency(int _ = 0)
+    {
+        coinsText.text = CurrencyManager.Instance.Coins.ToString();
+        gemsText.text = CurrencyManager.Instance.Gems.ToString();
     }
 
     private void BuildStageButtons()
@@ -58,7 +77,13 @@ public class StageMapScreen : UIScreen
                 }
             }
 
-            button.onClick.AddListener(() => GameManager.Instance.StartStage(stageIndex));
+            button.onClick.AddListener(() => EnterStage(stageIndex));
         }
+    }
+
+    private void EnterStage(int stageIndex)
+    {
+        GameSession.SelectedStageIndex = stageIndex;
+        SceneManager.LoadScene(inGameSceneName);
     }
 }

@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 public class ResultScreen : UIScreen
@@ -6,10 +7,11 @@ public class ResultScreen : UIScreen
     [SerializeField] private Text titleText;
     [SerializeField] private Text rewardText;
     [SerializeField] private Button continueButton;
+    [SerializeField] private string stageSceneName = "Stage";
 
     private void Awake()
     {
-        continueButton.onClick.AddListener(() => ScreenManager.Instance.ShowStageMap());
+        continueButton.onClick.AddListener(() => SceneManager.LoadScene(stageSceneName));
     }
 
     public void ShowResult(int stageIndex, int stars, int coinReward)
